@@ -14,13 +14,17 @@ if (!token || !clientId || !guildId) {
   throw new Error('DISCORD_TOKEN, DISCORD_CLIENT_ID, DISCORD_GUILD_ID 환경 변수가 필요합니다.');
 }
 
+const botToken = token;
+const appClientId = clientId;
+const targetGuildId = guildId;
+
 const client = new Client({
   intents: [GatewayIntentBits.Guilds],
 });
 
 async function registerCommands(): Promise<void> {
-  const rest = new REST({ version: '10' }).setToken(token);
-  await rest.put(Routes.applicationGuildCommands(clientId, guildId), {
+  const rest = new REST({ version: '10' }).setToken(botToken);
+  await rest.put(Routes.applicationGuildCommands(appClientId, targetGuildId), {
     body: commands.map((command) => command.data.toJSON()),
   });
   console.log('슬래시 명령 등록 완료');

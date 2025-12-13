@@ -2,8 +2,7 @@ import {
   ActionRowBuilder,
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
-  type APISelectMenuOption,
-  type InteractionReplyOptions,
+  type InteractionEditReplyOptions,
 } from 'discord.js';
 import type { Category } from '../storage/configStore.js';
 
@@ -13,13 +12,17 @@ export type ChannelOption = {
   description: string;
 };
 
-export type RenderResult = InteractionReplyOptions & {
+export type RenderResult = InteractionEditReplyOptions & {
   components: ActionRowBuilder<StringSelectMenuBuilder>[];
 };
 
 const BACK_VALUE = 'BACK';
 
-function buildSelect(customId: string, placeholder: string, options: APISelectMenuOption[]): ActionRowBuilder<StringSelectMenuBuilder> {
+function buildSelect(
+  customId: string,
+  placeholder: string,
+  options: StringSelectMenuOptionBuilder[],
+): ActionRowBuilder<StringSelectMenuBuilder> {
   const menu = new StringSelectMenuBuilder()
     .setCustomId(customId)
     .setPlaceholder(placeholder)
@@ -31,7 +34,7 @@ function buildSelect(customId: string, placeholder: string, options: APISelectMe
 export function renderHome(options: { favorites: string[]; hasBack: boolean }): RenderResult {
   const { favorites, hasBack } = options;
   const favoritesText = favorites.length > 0 ? favorites.map((f) => `• ${f}`).join('\n') : '즐겨찾기가 없습니다.';
-  const selectOptions: APISelectMenuOption[] = [
+  const selectOptions: StringSelectMenuOptionBuilder[] = [
     new StringSelectMenuOptionBuilder().setLabel('이동하기').setValue('GO'),
     new StringSelectMenuOptionBuilder().setLabel('즐겨찾기 편집').setValue('EDIT'),
   ];
@@ -46,7 +49,7 @@ export function renderHome(options: { favorites: string[]; hasBack: boolean }): 
 
 // Screen B: 카테고리 선택
 export function renderPickCategory(categories: Category[]): RenderResult {
-  const options: APISelectMenuOption[] = categories.map((cat) =>
+  const options: StringSelectMenuOptionBuilder[] = categories.map((cat) =>
     new StringSelectMenuOptionBuilder().setLabel(cat.name).setValue(cat.id),
   );
   options.push(new StringSelectMenuOptionBuilder().setLabel('뒤로가기').setValue(BACK_VALUE));
@@ -64,7 +67,7 @@ export function renderChannelList(options: {
   selectedChannelId?: string;
   jumpUrl?: string;
 }): RenderResult {
-  const channelOptions: APISelectMenuOption[] = options.channels.map((ch) =>
+  const channelOptions: StringSelectMenuOptionBuilder[] = options.channels.map((ch) =>
     new StringSelectMenuOptionBuilder()
       .setLabel(`#${ch.name} — ${ch.description}`)
       .setValue(ch.id)
@@ -77,7 +80,7 @@ export function renderChannelList(options: {
   ];
 
   if (options.selectedChannelId) {
-    const actionOptions: APISelectMenuOption[] = [
+    const actionOptions: StringSelectMenuOptionBuilder[] = [
       new StringSelectMenuOptionBuilder().setLabel('즐겨찾기에 추가').setValue('FAV_ADD'),
       new StringSelectMenuOptionBuilder().setLabel('뒤로가기').setValue(BACK_VALUE),
       new StringSelectMenuOptionBuilder().setLabel('홈으로').setValue('HOME'),
@@ -98,7 +101,7 @@ export function renderChannelList(options: {
 // Screen D: 즐겨찾기 편집
 export function renderEditFavorites(options: { hasCurrentChannel: boolean; notice?: string }): RenderResult {
   const { hasCurrentChannel, notice } = options;
-  const opts: APISelectMenuOption[] = [
+  const opts: StringSelectMenuOptionBuilder[] = [
     new StringSelectMenuOptionBuilder()
       .setLabel('현재 채널을 즐겨찾기에 추가')
       .setValue('ADD_CURRENT')
@@ -124,7 +127,7 @@ export function renderEditFavorites(options: { hasCurrentChannel: boolean; notic
 
 // Screen E: 즐겨찾기 추가 - 카테고리 선택
 export function renderAddFavPickCategory(categories: Category[]): RenderResult {
-  const opts: APISelectMenuOption[] = categories.map((cat) =>
+  const opts: StringSelectMenuOptionBuilder[] = categories.map((cat) =>
     new StringSelectMenuOptionBuilder().setLabel(cat.name).setValue(cat.id),
   );
   opts.push(new StringSelectMenuOptionBuilder().setLabel('뒤로가기').setValue(BACK_VALUE));
@@ -140,7 +143,7 @@ export function renderAddFavPickChannel(options: {
   categoryId: string;
   channels: ChannelOption[];
 }): RenderResult {
-  const opts: APISelectMenuOption[] = options.channels.map((ch) =>
+  const opts: StringSelectMenuOptionBuilder[] = options.channels.map((ch) =>
     new StringSelectMenuOptionBuilder().setLabel(`#${ch.name} — ${ch.description}`).setValue(ch.id),
   );
   opts.push(new StringSelectMenuOptionBuilder().setLabel('뒤로가기').setValue(BACK_VALUE));
@@ -152,7 +155,7 @@ export function renderAddFavPickChannel(options: {
 
 // Screen G: 즐겨찾기 삭제
 export function renderRemoveFavorite(favorites: ChannelOption[]): RenderResult {
-  const opts: APISelectMenuOption[] = favorites.map((fav) =>
+  const opts: StringSelectMenuOptionBuilder[] = favorites.map((fav) =>
     new StringSelectMenuOptionBuilder().setLabel(`#${fav.name}`).setValue(fav.id).setDescription(fav.description),
   );
   opts.push(new StringSelectMenuOptionBuilder().setLabel('뒤로가기').setValue(BACK_VALUE));
@@ -167,7 +170,7 @@ export function renderReorderFavorite(options: {
   favorites: ChannelOption[];
   sourceIndex?: number;
 }): RenderResult {
-  const firstOptions: APISelectMenuOption[] = options.favorites.map((fav, idx) =>
+  const firstOptions: StringSelectMenuOptionBuilder[] = options.favorites.map((fav, idx) =>
     new StringSelectMenuOptionBuilder()
       .setLabel(`#${fav.name}`)
       .setValue(String(idx))
@@ -180,7 +183,7 @@ export function renderReorderFavorite(options: {
   ];
 
   if (options.sourceIndex !== undefined) {
-    const moveOptions: APISelectMenuOption[] = options.favorites.map((fav, idx) =>
+    const moveOptions: StringSelectMenuOptionBuilder[] = options.favorites.map((fav, idx) =>
       new StringSelectMenuOptionBuilder()
         .setLabel(`${idx + 1}번 위치로 이동`)
         .setValue(String(idx))
