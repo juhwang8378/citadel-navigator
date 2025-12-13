@@ -2,7 +2,7 @@ import {
   type ChatInputCommandInteraction,
   type StringSelectMenuInteraction,
   type GuildBasedChannel,
-  type GuildMember,
+  GuildMember,
   PermissionFlagsBits,
 } from 'discord.js';
 import { readConfig } from '../storage/configStore.js';
