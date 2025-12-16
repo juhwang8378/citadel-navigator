@@ -27,7 +27,10 @@ import { nanoid } from 'nanoid';
 function ensureModerator(interaction: ButtonInteraction | StringSelectMenuInteraction | ChannelSelectMenuInteraction | ModalSubmitInteraction): boolean {
   const member = interaction.member;
   if (member && 'permissions' in member) {
-    return member.permissions.has(PermissionFlagsBits.ManageChannels);
+    const perms = (member as any).permissions;
+    if (perms && typeof perms !== 'string' && typeof perms.has === 'function') {
+      return perms.has(PermissionFlagsBits.ManageChannels);
+    }
   }
   return false;
 }
@@ -165,7 +168,8 @@ function renderOrderPickPosition(categoryName: string, options: { label: string;
 }
 
 function renderCategoryOrderPick(categories: { id: string; name: string }[]) {
-  const rows = [buildStringSelect('naviedit:catorder:category', '카테고리 선택', categories), ...renderNavRow()];
+  const options = categories.map((c) => ({ label: c.name, value: c.id }));
+  const rows = [buildStringSelect('naviedit:catorder:category', '카테고리 선택', options), ...renderNavRow()];
   return renderAdmin('순서를 변경할 카테고리를 정해주세요', rows, EDIT_ACCENT);
 }
 
@@ -307,14 +311,14 @@ async function applyChannelAdd(sessionData: any) {
   }
   touched.forEach((catId) => {
     const list = getChannelsByCategory(config, catId);
-    list.forEach((id, idx) => {
+    list.forEach((id: string, idx: number) => {
       if (config.channelRegistry[id]) {
         config.channelRegistry[id].position = idx + 1;
       }
     });
   });
   const existingInCategory = getChannelsByCategory(config, categoryId);
-  channels.forEach((ch, idx) => {
+  channels.forEach((ch: string, idx: number) => {
     config.channelRegistry[ch] = { categoryId, position: existingInCategory.length + idx + 1 };
   });
   await writeConfig(config);
@@ -340,6 +344,7 @@ async function handleNewCategoryModal(interaction: ModalSubmitInteraction) {
   if (!interaction.customId.startsWith('naviedit:add:newname')) return;
   const session = getEditSession(interaction.user.id);
   if (!session || session.mode !== 'ADD_CHANNEL') return;
+  if (session.current.step !== 'ADD_METHOD') return;
   const name = interaction.fields.getTextInputValue('name').trim();
   const config = await readConfig();
   const categories = [...config.categories].sort((a, b) => a.order - b.order);
@@ -347,7 +352,8 @@ async function handleNewCategoryModal(interaction: ModalSubmitInteraction) {
     label: `${idx + 1}번 위치`,
     value: String(idx),
   }));
-  setEditSession(interaction.user.id, { step: 'ADD_NEW_CATEGORY_ORDER', channels: session.current.channels, categoryName: name });
+  const { channels } = session.current;
+  setEditSession(interaction.user.id, { step: 'ADD_NEW_CATEGORY_ORDER', channels, categoryName: name });
   await interaction.reply({ ...renderAdmin('사용자에게 보여질 새 카테고리 순서를 정해주세요', [buildStringSelect('naviedit:add:new:order', '순서 선택', options), ...renderNavRow()], EDIT_ACCENT), ephemeral: true });
 }
 
@@ -461,14 +467,15 @@ async function handleOrderChannelSelect(interaction: ChannelSelectMenuInteractio
   if (session.current.step !== 'ORDER_PICK_CHANNEL') return;
   const channelId = interaction.values[0];
   const config = await readConfig();
-  const channels = getChannelsByCategory(config, session.current.categoryId);
+  const { categoryId } = session.current;
+  const channels = getChannelsByCategory(config, categoryId);
   if (!channels.includes(channelId)) {
     await interaction.reply({ content: '선택한 채널은 해당 카테고리에 없습니다.', ephemeral: true });
     return;
   }
   const options = channels.map((id, idx) => ({ label: `${idx + 1}번`, value: String(idx) }));
-  setEditSession(interaction.user.id, { step: 'ORDER_PICK_POSITION', categoryId: session.current.categoryId, channelId });
-  const categoryName = config.categories.find((c) => c.id === session.current.categoryId)?.name ?? '';
+  setEditSession(interaction.user.id, { step: 'ORDER_PICK_POSITION', categoryId, channelId });
+  const categoryName = config.categories.find((c) => c.id === categoryId)?.name ?? '';
   await interaction.update(renderOrderPickPosition(categoryName, options));
 }
 
