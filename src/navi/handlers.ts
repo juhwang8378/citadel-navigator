@@ -31,6 +31,7 @@ import {
   type ChannelOption,
 } from './screens.js';
 import type { Category } from '../storage/configStore.js';
+import { safeEditReply } from '../utils/debug.js';
 type NaviInteraction =
   | ChatInputCommandInteraction
   | StringSelectMenuInteraction
@@ -120,7 +121,7 @@ async function showHome(interaction: NaviInteraction, sessionUserId: string) {
   const favMentions = visibleFavs.map((fav) => `<#${fav.id}>`);
   const session = getOrCreateSession(sessionUserId);
   const result = renderHome({ favorites: favMentions, hasBack: session.stack.length > 0 });
-  await interaction.editReply(result);
+  await safeEditReply(interaction, result, 'home');
 }
 
 async function openCategoryPicker(interaction: NaviInteraction, userId: string): Promise<void> {
@@ -128,10 +129,10 @@ async function openCategoryPicker(interaction: NaviInteraction, userId: string):
   const categories = [...config.categories].sort((a, b) => a.order - b.order);
   const canGoBack = getOrCreateSession(userId).stack.length > 0;
   if (categories.length === 0) {
-    await interaction.editReply(renderInfoMessage('등록된 카테고리가 없습니다.', navButtons(userId)));
+    await safeEditReply(interaction, renderInfoMessage('등록된 카테고리가 없습니다.', navButtons(userId)), 'pick-category-empty');
     return;
   }
-  await interaction.editReply(renderPickCategory({ categories, canGoBack }));
+  await safeEditReply(interaction, renderPickCategory({ categories, canGoBack }), 'pick-category');
 }
 
 async function openChannelList(
@@ -141,7 +142,7 @@ async function openChannelList(
 ): Promise<void> {
   const { category, channels } = await fetchRegisteredChannels(interaction, categoryId);
   if (!category) {
-    await interaction.editReply(renderInfoMessage('해당 카테고리를 찾을 수 없습니다.', navButtons(userId)));
+    await safeEditReply(interaction, renderInfoMessage('해당 카테고리를 찾을 수 없습니다.', navButtons(userId)), 'channel-list-missing');
     return;
   }
   const canGoBack = getOrCreateSession(userId).stack.length > 0;
@@ -151,13 +152,13 @@ async function openChannelList(
     channels,
     canGoBack,
   });
-  await interaction.editReply(result);
+  await safeEditReply(interaction, result, 'channel-list');
 }
 
 async function openEditFavorites(interaction: NaviInteraction, hasCurrentChannel: boolean, notice?: string): Promise<void> {
   const userId = interaction.user.id;
   const canGoBack = getOrCreateSession(userId).stack.length > 0;
-  await interaction.editReply(renderEditFavorites({ hasCurrentChannel, notice, canGoBack }));
+  await safeEditReply(interaction, renderEditFavorites({ hasCurrentChannel, notice, canGoBack }), 'edit-favorites');
 }
 
 async function addFavoriteWithChecks(
@@ -192,11 +193,11 @@ async function openRemoveFavorite(
   const favorites = await getFavorites(userId);
   const visible = await resolveFavorites(interaction, favorites);
   if (visible.length === 0) {
-    await interaction.editReply(renderInfoMessage('삭제할 즐겨찾기가 없습니다.', navButtons(userId)));
+    await safeEditReply(interaction, renderInfoMessage('삭제할 즐겨찾기가 없습니다.', navButtons(userId)), 'remove-fav-empty');
     return;
   }
   const canGoBack = getOrCreateSession(userId).stack.length > 0;
-  await interaction.editReply(renderRemoveFavorite({ favorites: visible, canGoBack }));
+  await safeEditReply(interaction, renderRemoveFavorite({ favorites: visible, canGoBack }), 'remove-fav');
 }
 
 async function openReorderFavorite(
@@ -207,11 +208,11 @@ async function openReorderFavorite(
   const favorites = await getFavorites(userId);
   const visible = await resolveFavorites(interaction, favorites);
   if (visible.length === 0) {
-    await interaction.editReply(renderInfoMessage('즐겨찾기가 없습니다.', navButtons(userId)));
+    await safeEditReply(interaction, renderInfoMessage('즐겨찾기가 없습니다.', navButtons(userId)), 'reorder-fav-empty');
     return;
   }
   const canGoBack = getOrCreateSession(userId).stack.length > 0;
-  await interaction.editReply(renderReorderFavorite({ favorites: visible, sourceIndex, canGoBack }));
+  await safeEditReply(interaction, renderReorderFavorite({ favorites: visible, sourceIndex, canGoBack }), 'reorder-fav');
 }
 
 export async function handleNaviCommand(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -263,11 +264,11 @@ export async function handleNaviInteraction(
       const { channels } = await fetchRegisteredChannels(interaction, categoryId);
       const allowed = channels.find((c) => c.id === channelId);
       if (!allowed) {
-        await interaction.editReply(renderInfoMessage('선택한 채널을 사용할 수 없습니다.', navButtons(userId)));
+        await safeEditReply(interaction, renderInfoMessage('선택한 채널을 사용할 수 없습니다.', navButtons(userId)), 'channel-select-invalid');
         return;
       }
       const link = interaction.guild ? `https://discord.com/channels/${interaction.guild.id}/${channelId}` : '';
-      await interaction.editReply(renderInfoMessage(`선택한 채널로 이동: <#${channelId}> ${link}`.trim(), navButtons(userId)));
+      await safeEditReply(interaction, renderInfoMessage(`선택한 채널로 이동: <#${channelId}> ${link}`.trim(), navButtons(userId)), 'channel-select');
       return;
     }
   }
@@ -285,7 +286,7 @@ export async function handleNaviInteraction(
       if (choice === 'ADD_CURRENT') {
         const channel = interaction.channel;
         if (!channel) {
-          await interaction.editReply(renderInfoMessage('현재 채널 정보를 확인할 수 없습니다.', navButtons(userId)));
+          await safeEditReply(interaction, renderInfoMessage('현재 채널 정보를 확인할 수 없습니다.', navButtons(userId)), 'editfav-nochannel');
           return;
         }
         const error = await addFavoriteWithChecks(interaction, userId, channel.id);
