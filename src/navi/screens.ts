@@ -2,6 +2,7 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  ChannelSelectMenuBuilder,
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
   type InteractionEditReplyOptions,
@@ -12,12 +13,21 @@ import type { Category } from '../storage/configStore.js';
 export type ChannelOption = {
   id: string;
   name: string;
-  description: string;
 };
 
 export type RenderResult = InteractionEditReplyOptions & {
-  components: ActionRowBuilder<MessageActionRowComponentBuilder>[];
+  components: any[];
 };
+
+const COMPONENTS_FLAG = 1 << 15;
+const NAVI_ACCENT = '#1be800';
+
+function toContainers(
+  rows: ActionRowBuilder<MessageActionRowComponentBuilder>[],
+  accentColor: string,
+): any[] {
+  return rows.map((row) => ({ ...row.toJSON(), accent_color: accentColor }));
+}
 
 function buildSelect(
   customId: string,
@@ -28,6 +38,18 @@ function buildSelect(
     .setCustomId(customId)
     .setPlaceholder(placeholder)
     .addOptions(options);
+  return new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(menu);
+}
+
+function buildChannelSelect(
+  customId: string,
+  placeholder: string,
+  maxValues = 1,
+): ActionRowBuilder<MessageActionRowComponentBuilder> {
+  const menu = new ChannelSelectMenuBuilder()
+    .setCustomId(customId)
+    .setPlaceholder(placeholder)
+    .setMaxValues(maxValues);
   return new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(menu);
 }
 
@@ -61,7 +83,8 @@ export function renderHome(options: { favorites: string[]; hasBack: boolean }): 
 
   return {
     content: `**채널 내비게이터**\n원하는 채널로 이동하거나 즐겨찾기를 관리하세요.\n\n즐겨찾기:\n${favoritesText}`,
-    components: rows,
+    components: toContainers(rows, NAVI_ACCENT),
+    flags: COMPONENTS_FLAG,
   };
 }
 
@@ -77,7 +100,8 @@ export function renderPickCategory(options: { categories: Category[]; canGoBack:
   if (navRow) rows.push(navRow);
   return {
     content: '카테고리를 선택하세요.',
-    components: rows,
+    components: toContainers(rows, NAVI_ACCENT),
+    flags: COMPONENTS_FLAG,
   };
 }
 
@@ -88,17 +112,21 @@ export function renderChannelList(options: {
   channels: ChannelOption[];
   canGoBack: boolean;
 }): RenderResult {
-  const listText =
-    options.channels.length > 0
-      ? options.channels.map((ch) => `• <#${ch.id}> — ${ch.description}`).join('\n')
-      : '이 카테고리에 표시할 채널이 없습니다.';
   const navRow = buildNavRow({ showBack: options.canGoBack, showHome: true });
-  const rows: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [];
+  const rows: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [
+    buildChannelSelect(`navi:chanselect:${options.categoryId}`, `${options.categoryName} 채널 선택`),
+  ];
   if (navRow) rows.push(navRow);
 
+  const summary =
+    options.channels.length > 0
+      ? options.channels.map((ch) => `• <#${ch.id}>`).join('\n')
+      : '이 카테고리에 표시할 채널이 없습니다.';
+
   return {
-    content: `카테고리: ${options.categoryName}\n아래 링크를 눌러서 해당 채널로 이동하세요.\n\n${listText}`,
-    components: rows,
+    content: `카테고리: ${options.categoryName}\n아래에서 이동할 채널을 선택하세요.\n\n${summary}`,
+    components: toContainers(rows, NAVI_ACCENT),
+    flags: COMPONENTS_FLAG,
   };
 }
 
@@ -127,7 +155,8 @@ export function renderEditFavorites(options: {
 
   return {
     content: `${notice ? `${notice}\n\n` : ''}즐겨찾기(최대 5개)를 추가/삭제/순서 변경할 수 있습니다.`,
-    components: rows,
+    components: toContainers(rows, NAVI_ACCENT),
+    flags: COMPONENTS_FLAG,
   };
 }
 
@@ -137,7 +166,7 @@ export function renderRemoveFavorite(options: {
   canGoBack: boolean;
 }): RenderResult {
   const opts: StringSelectMenuOptionBuilder[] = options.favorites.map((fav) =>
-    new StringSelectMenuOptionBuilder().setLabel(`#${fav.name}`).setValue(fav.id).setDescription(fav.description),
+    new StringSelectMenuOptionBuilder().setLabel(`#${fav.name}`).setValue(fav.id),
   );
   const rows: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [
     buildSelect('navi:removefav', '즐겨찾기 선택', opts),
@@ -146,7 +175,8 @@ export function renderRemoveFavorite(options: {
   if (navRow) rows.push(navRow);
   return {
     content: '삭제할 즐겨찾기를 선택하세요.',
-    components: rows,
+    components: toContainers(rows, NAVI_ACCENT),
+    flags: COMPONENTS_FLAG,
   };
 }
 
@@ -161,20 +191,14 @@ export function renderReorderFavorite(options: {
 
   if (options.sourceIndex === undefined) {
     const firstOptions: StringSelectMenuOptionBuilder[] = options.favorites.map((fav, idx) =>
-      new StringSelectMenuOptionBuilder()
-        .setLabel(`#${fav.name}`)
-        .setValue(String(idx))
-        .setDescription(fav.description),
+      new StringSelectMenuOptionBuilder().setLabel(`#${fav.name}`).setValue(String(idx)),
     );
     rows.push(buildSelect('navi:reorder:pick', '이동할 즐겨찾기를 선택하세요', firstOptions));
     content = '순서를 변경할 즐겨찾기를 선택하세요.';
   } else {
     const selected = options.favorites[options.sourceIndex];
     const moveOptions: StringSelectMenuOptionBuilder[] = options.favorites.map((fav, idx) =>
-      new StringSelectMenuOptionBuilder()
-        .setLabel(`${idx + 1}번 위치로 이동`)
-        .setValue(String(idx))
-        .setDescription(`#${fav.name}`),
+      new StringSelectMenuOptionBuilder().setLabel(`${idx + 1}번 위치로 이동`).setValue(String(idx)),
     );
     rows.push(buildSelect('navi:reorder:target', '이동할 위치 선택(1~마지막)', moveOptions));
     const selectedText = selected ? `#${selected.name}` : '선택된 즐겨찾기';
@@ -186,7 +210,8 @@ export function renderReorderFavorite(options: {
 
   return {
     content,
-    components: rows,
+    components: toContainers(rows, NAVI_ACCENT),
+    flags: COMPONENTS_FLAG,
   };
 }
 
@@ -194,15 +219,23 @@ export function renderInfoMessage(
   text: string,
   nav?: { showBack?: boolean; showHome?: boolean },
 ): RenderResult {
-  const components: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [];
+  const rows: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [];
   if (nav) {
     const navRow = buildNavRow(nav);
     if (navRow) {
-      components.push(navRow);
+      rows.push(navRow);
     }
+  }
+  if (rows.length === 0) {
+    rows.push(
+      new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+        new ButtonBuilder().setCustomId('navi:noop').setLabel('확인').setStyle(ButtonStyle.Secondary).setDisabled(true),
+      ),
+    );
   }
   return {
     content: text,
-    components,
+    components: toContainers(rows, NAVI_ACCENT),
+    flags: COMPONENTS_FLAG,
   };
 }

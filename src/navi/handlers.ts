@@ -2,6 +2,7 @@ import {
   type ButtonInteraction,
   type ChatInputCommandInteraction,
   type StringSelectMenuInteraction,
+  type ChannelSelectMenuInteraction,
   type GuildBasedChannel,
   GuildMember,
   PermissionFlagsBits,
@@ -30,23 +31,15 @@ import {
   type ChannelOption,
 } from './screens.js';
 import type { Category } from '../storage/configStore.js';
-type NaviInteraction = ChatInputCommandInteraction | StringSelectMenuInteraction | ButtonInteraction;
+type NaviInteraction =
+  | ChatInputCommandInteraction
+  | StringSelectMenuInteraction
+  | ChannelSelectMenuInteraction
+  | ButtonInteraction;
 
 function navButtons(userId: string): { showBack: boolean; showHome: boolean } {
   const showBack = getOrCreateSession(userId).stack.length > 0;
   return { showBack, showHome: true };
-}
-
-function truncate(text: string, max = 60): string {
-  if (text.length <= max) return text;
-  return `${text.slice(0, max - 1)}…`;
-}
-
-function firstLine(text?: string | null): string {
-  if (!text) return '설명 없음';
-  const [line] = text.split('\n');
-  const trimmed = line.trim();
-  return trimmed.length > 0 ? trimmed : '설명 없음';
 }
 
 async function ensureMember(interaction: NaviInteraction): Promise<GuildMember | null> {
@@ -78,6 +71,7 @@ async function fetchRegisteredChannels(
 
   const channelIds = Object.entries(config.channelRegistry)
     .filter(([, entry]) => entry.categoryId === categoryId)
+    .sort(([, a], [, b]) => (a.position ?? 0) - (b.position ?? 0))
     .map(([channelId]) => channelId);
 
   const member = await ensureMember(interaction);
@@ -89,7 +83,6 @@ async function fetchRegisteredChannels(
       result.push({
         id: channel.id,
         name: channel.name,
-        description: truncate(firstLine((channel as any).topic)),
       });
     } catch {
       // skip missing channels
@@ -113,7 +106,6 @@ async function resolveFavorites(
       visible.push({
         id: channel.id,
         name: channel.name,
-        description: truncate(firstLine((channel as any).topic)),
       });
     } catch {
       // ignore invalid
@@ -230,7 +222,7 @@ export async function handleNaviCommand(interaction: ChatInputCommandInteraction
 }
 
 export async function handleNaviInteraction(
-  interaction: StringSelectMenuInteraction | ButtonInteraction,
+  interaction: StringSelectMenuInteraction | ChannelSelectMenuInteraction | ButtonInteraction,
 ): Promise<void> {
   const customId = interaction.customId;
   if (!customId.startsWith('navi:')) return;
@@ -261,6 +253,23 @@ export async function handleNaviInteraction(
     setCurrentScreen(userId, { screen: 'EDIT_FAVORITES' });
     await openEditFavorites(interaction, interaction.channel !== null);
     return;
+  }
+
+  if (interaction.isChannelSelectMenu()) {
+    if (customId.startsWith('navi:chanselect:')) {
+      const categoryId = customId.split(':')[2] ?? '';
+      const channelId = interaction.values[0];
+      setCurrentScreen(userId, { screen: 'CHANNEL_LIST', categoryId });
+      const { channels } = await fetchRegisteredChannels(interaction, categoryId);
+      const allowed = channels.find((c) => c.id === channelId);
+      if (!allowed) {
+        await interaction.editReply(renderInfoMessage('선택한 채널을 사용할 수 없습니다.', navButtons(userId)));
+        return;
+      }
+      const link = interaction.guild ? `https://discord.com/channels/${interaction.guild.id}/${channelId}` : '';
+      await interaction.editReply(renderInfoMessage(`선택한 채널로 이동: <#${channelId}> ${link}`.trim(), navButtons(userId)));
+      return;
+    }
   }
 
   if (interaction.isStringSelectMenu()) {

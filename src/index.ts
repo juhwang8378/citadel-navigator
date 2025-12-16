@@ -4,6 +4,7 @@ import { commands } from './commands/index.js';
 import type { Command } from './commands/types.js';
 import { handleNaviInteraction } from './navi/handlers.js';
 import { handleAdminActionButton } from './commands/adminConfirm.js';
+import { handleEditInteraction, handleEditModalInteraction } from './admin/editHandler.js';
 
 dotenv.config();
 
@@ -51,21 +52,33 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await command.execute(interaction);
       return;
     }
-    if (interaction.isStringSelectMenu() || interaction.isButton()) {
+    if (interaction.isModalSubmit()) {
+      const handled = await handleEditModalInteraction(interaction);
+      if (handled) return;
+    }
+    if (interaction.isStringSelectMenu() || interaction.isChannelSelectMenu() || interaction.isButton()) {
       if (interaction.isButton()) {
         const handled = await handleAdminActionButton(interaction);
         if (handled) return;
       }
+      const editHandled = await handleEditInteraction(interaction);
+      if (editHandled) return;
       await handleNaviInteraction(interaction);
     }
   } catch (error) {
     console.error(error);
+    const errorPayload = {
+      content: '오류가 발생했습니다. 잠시 후 다시 시도하세요.',
+      components: [
+        { type: 1, accent_color: '#ed0000', components: [{ type: 2, style: 2, label: '확인', custom_id: 'noop', disabled: true }] },
+      ],
+      flags: 1 << 15,
+    };
     if (interaction.isRepliable()) {
-      const message = '오류가 발생했습니다. 잠시 후 다시 시도하세요.';
       if (interaction.replied || interaction.deferred) {
-        await interaction.editReply({ content: message, components: [] }).catch(() => {});
+        await interaction.editReply(errorPayload as any).catch(() => {});
       } else {
-        await interaction.reply({ content: message, ephemeral: true }).catch(() => {});
+        await interaction.reply({ ...(errorPayload as any), ephemeral: true }).catch(() => {});
       }
     }
   }
