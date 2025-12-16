@@ -477,7 +477,8 @@ async function handleOrderPosition(interaction: StringSelectMenuInteraction) {
   if (!session || session.mode !== 'ORDER_CHANNEL') return;
   if (session.current.step !== 'ORDER_PICK_POSITION') return;
   const targetIndex = parseInt(interaction.values[0], 10);
-  await reorderChannels(session.current.categoryId, session.current.channelId, targetIndex);
+  const { categoryId, channelId } = session.current;
+  await reorderChannels(categoryId, channelId, targetIndex);
   endEditSession(interaction.user.id);
   await interaction.update(renderAdmin('채널 순서가 변경되었습니다.', renderNavRow(), EDIT_ACCENT));
 }

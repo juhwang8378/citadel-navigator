@@ -5,15 +5,20 @@ import {
   ChannelSelectMenuBuilder,
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
-  type InteractionEditReplyOptions,
   type MessageActionRowComponentBuilder,
 } from 'discord.js';
 
-const COMPONENTS_FLAG = 1 << 15;
 export const EDIT_ACCENT = '#ed0000';
 export const VIEW_ACCENT = '#0073ed';
 
-export type AdminRender = InteractionEditReplyOptions & { components: any[] };
+const COMPONENTS_FLAG = 1 << 15;
+
+export type AdminRender = {
+  content: string;
+  components: any[];
+  flags?: number;
+  ephemeral?: boolean;
+};
 
 function toContainers(rows: ActionRowBuilder<MessageActionRowComponentBuilder>[], accent: string): any[] {
   return rows.map((row) => ({ ...row.toJSON(), accent_color: accent }));
