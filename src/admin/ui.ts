@@ -8,20 +8,17 @@ import {
   type MessageActionRowComponentBuilder,
 } from 'discord.js';
 
-export const EDIT_ACCENT = 0xed0000;
-export const VIEW_ACCENT = 0x0073ed;
-
-const COMPONENTS_FLAG = 1 << 15;
+export const EDIT_ACCENT = undefined;
+export const VIEW_ACCENT = undefined;
 
 export type AdminRender = {
-  embeds: { description: string }[];
+  content: string;
   components: any[];
-  flags?: number;
   ephemeral?: boolean;
 };
 
-function toContainers(rows: ActionRowBuilder<MessageActionRowComponentBuilder>[], accent: number): any[] {
-  return rows.map((row) => ({ ...row.toJSON(), accent_color: accent }));
+function toContainers(rows: ActionRowBuilder<MessageActionRowComponentBuilder>[]): any[] {
+  return rows.map((row) => row.toJSON());
 }
 
 export function buildButtons(buttons: { id: string; label: string; style: ButtonStyle }[]): ActionRowBuilder<MessageActionRowComponentBuilder> {
@@ -61,5 +58,5 @@ export function buildChannelSelect(
 }
 
 export function renderAdmin(content: string, rows: ActionRowBuilder<MessageActionRowComponentBuilder>[], accent = EDIT_ACCENT): AdminRender {
-  return { embeds: [{ description: content }], components: toContainers(rows, accent), flags: COMPONENTS_FLAG };
+  return { content, components: toContainers(rows) };
 }

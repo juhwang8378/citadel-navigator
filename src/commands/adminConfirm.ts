@@ -8,11 +8,10 @@ const COMPONENTS_FLAG = 1 << 15;
 
 function wrap(content: string) {
   return {
-    embeds: [{ description: content }],
+    content,
     components: [
-      { type: 1, accent_color: EDIT_ACCENT, components: [{ type: 2, style: ButtonStyle.Secondary, label: '확인', custom_id: 'noop', disabled: true }] },
+      { type: 1, components: [{ type: 2, style: ButtonStyle.Secondary, label: '확인', custom_id: 'noop', disabled: true }] },
     ],
-    flags: COMPONENTS_FLAG,
   };
 }
 

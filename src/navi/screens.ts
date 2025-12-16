@@ -19,14 +19,8 @@ export type RenderResult = InteractionEditReplyOptions & {
   components: any[];
 };
 
-const COMPONENTS_FLAG = 1 << 15;
-const NAVI_ACCENT = 0x1be800;
-
-function toContainers(
-  rows: ActionRowBuilder<MessageActionRowComponentBuilder>[],
-  accentColor: number,
-): any[] {
-  return rows.map((row) => ({ ...row.toJSON(), accent_color: accentColor }));
+function toContainers(rows: ActionRowBuilder<MessageActionRowComponentBuilder>[]): any[] {
+  return rows.map((row) => row.toJSON());
 }
 
 function buildSelect(
@@ -82,13 +76,8 @@ export function renderHome(options: { favorites: string[]; hasBack: boolean }): 
   if (navRow) rows.push(navRow);
 
   return {
-    embeds: [
-      {
-        description: `**채널 내비게이터**\n원하는 채널로 이동하거나 즐겨찾기를 관리하세요.\n\n즐겨찾기:\n${favoritesText}`,
-      },
-    ],
-    components: toContainers(rows, NAVI_ACCENT),
-    flags: COMPONENTS_FLAG,
+    content: `**채널 내비게이터**\n원하는 채널로 이동하거나 즐겨찾기를 관리하세요.\n\n즐겨찾기:\n${favoritesText}`,
+    components: toContainers(rows),
   };
 }
 
@@ -103,9 +92,8 @@ export function renderPickCategory(options: { categories: Category[]; canGoBack:
   const navRow = buildNavRow({ showBack: options.canGoBack, showHome: true });
   if (navRow) rows.push(navRow);
   return {
-    embeds: [{ description: '카테고리를 선택하세요.' }],
-    components: toContainers(rows, NAVI_ACCENT),
-    flags: COMPONENTS_FLAG,
+    content: '카테고리를 선택하세요.',
+    components: toContainers(rows),
   };
 }
 
@@ -128,9 +116,8 @@ export function renderChannelList(options: {
       : '이 카테고리에 표시할 채널이 없습니다.';
 
   return {
-    embeds: [{ description: `카테고리: ${options.categoryName}\n아래에서 이동할 채널을 선택하세요.\n\n${summary}` }],
-    components: toContainers(rows, NAVI_ACCENT),
-    flags: COMPONENTS_FLAG,
+    content: `카테고리: ${options.categoryName}\n아래에서 이동할 채널을 선택하세요.\n\n${summary}`,
+    components: toContainers(rows),
   };
 }
 
@@ -158,13 +145,8 @@ export function renderEditFavorites(options: {
   if (navRow) rows.push(navRow);
 
   return {
-    embeds: [
-      {
-        description: `${notice ? `${notice}\n\n` : ''}즐겨찾기(최대 5개)를 추가/삭제/순서 변경할 수 있습니다.`,
-      },
-    ],
-    components: toContainers(rows, NAVI_ACCENT),
-    flags: COMPONENTS_FLAG,
+    content: `${notice ? `${notice}\n\n` : ''}즐겨찾기(최대 5개)를 추가/삭제/순서 변경할 수 있습니다.`,
+    components: toContainers(rows),
   };
 }
 
@@ -182,9 +164,8 @@ export function renderRemoveFavorite(options: {
   const navRow = buildNavRow({ showBack: options.canGoBack, showHome: true });
   if (navRow) rows.push(navRow);
   return {
-    embeds: [{ description: '삭제할 즐겨찾기를 선택하세요.' }],
-    components: toContainers(rows, NAVI_ACCENT),
-    flags: COMPONENTS_FLAG,
+    content: '삭제할 즐겨찾기를 선택하세요.',
+    components: toContainers(rows),
   };
 }
 
@@ -217,9 +198,8 @@ export function renderReorderFavorite(options: {
   if (navRow) rows.push(navRow);
 
   return {
-    embeds: [{ description: content }],
-    components: toContainers(rows, NAVI_ACCENT),
-    flags: COMPONENTS_FLAG,
+    content,
+    components: toContainers(rows),
   };
 }
 
@@ -242,8 +222,7 @@ export function renderInfoMessage(
     );
   }
   return {
-    embeds: [{ description: text }],
-    components: toContainers(rows, NAVI_ACCENT),
-    flags: COMPONENTS_FLAG,
+    content: text,
+    components: toContainers(rows),
   };
 }
