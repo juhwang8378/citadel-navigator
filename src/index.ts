@@ -2,7 +2,8 @@ import { Client, Events, GatewayIntentBits, REST, Routes } from 'discord.js';
 import dotenv from 'dotenv';
 import { commands } from './commands/index.js';
 import type { Command } from './commands/types.js';
-import { handleNaviSelect } from './navi/handlers.js';
+import { handleNaviInteraction } from './navi/handlers.js';
+import { handleAdminActionButton } from './commands/adminConfirm.js';
 
 dotenv.config();
 
@@ -37,14 +38,25 @@ client.once(Events.ClientReady, async (c) => {
 
 client.on(Events.InteractionCreate, async (interaction) => {
   try {
+    if (interaction.isAutocomplete()) {
+      const command = commands.find((cmd) => cmd.data.name === interaction.commandName) as Command | undefined;
+      if (command?.autocomplete) {
+        await command.autocomplete(interaction);
+      }
+      return;
+    }
     if (interaction.isChatInputCommand()) {
       const command = commands.find((cmd) => cmd.data.name === interaction.commandName) as Command | undefined;
       if (!command) return;
       await command.execute(interaction);
       return;
     }
-    if (interaction.isStringSelectMenu()) {
-      await handleNaviSelect(interaction);
+    if (interaction.isStringSelectMenu() || interaction.isButton()) {
+      if (interaction.isButton()) {
+        const handled = await handleAdminActionButton(interaction);
+        if (handled) return;
+      }
+      await handleNaviInteraction(interaction);
     }
   } catch (error) {
     console.error(error);

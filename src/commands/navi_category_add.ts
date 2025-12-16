@@ -1,7 +1,8 @@
 import { PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
 import { nanoid } from 'nanoid';
 import type { Command } from './types.js';
-import { addCategory, readConfig } from '../storage/configStore.js';
+import { readConfig } from '../storage/configStore.js';
+import { createPendingAction } from '../utils/pendingActions.js';
 
 function makeSlug(name: string): string {
   const base = name
@@ -16,7 +17,7 @@ export const naviCategoryAddCommand: Command = {
   data: new SlashCommandBuilder()
     .setName('navi_category_add')
     .setDescription('내비게이터 카테고리를 추가합니다.')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
     .addStringOption((option) =>
       option.setName('name').setDescription('카테고리 이름').setRequired(true),
     )
@@ -32,10 +33,23 @@ export const naviCategoryAddCommand: Command = {
       id = `${id}-${nanoid(4)}`;
     }
     const sortOrder = order ?? config.categories.length + 1;
-    await addCategory({ id, name, order: sortOrder });
+    const token = createPendingAction({
+      userId: interaction.user.id,
+      type: 'CAT_ADD',
+      payload: { id, name, order: sortOrder },
+    });
     await interaction.reply({
-      content: `카테고리가 추가되었습니다.\n아이디: ${id}\n이름: ${name}\n정렬 순서: ${sortOrder}`,
+      content: `관리자 권한으로 "${name}" 카테고리를 내비게이션에 등록하시겠습니까? 이 변경사항은 서버 내 모든 유저에게 반영됩니다. 자주 변경하면 사용자에게 혼란을 줄 수 있습니다.`,
       ephemeral: true,
+      components: [
+        {
+          type: 1,
+          components: [
+            { type: 2, style: 3, label: '확인', custom_id: `admin:confirm:${token}` },
+            { type: 2, style: 4, label: '취소', custom_id: `admin:cancel:${token}` },
+          ],
+        },
+      ],
     });
   },
 };

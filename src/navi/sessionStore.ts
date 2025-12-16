@@ -1,10 +1,8 @@
 export type ScreenState =
   | { screen: 'HOME' }
   | { screen: 'PICK_CATEGORY' }
-  | { screen: 'CHANNEL_LIST'; categoryId: string; selectedChannelId?: string }
+  | { screen: 'CHANNEL_LIST'; categoryId: string }
   | { screen: 'EDIT_FAVORITES' }
-  | { screen: 'ADD_FAV_FROM_CATEGORY' }
-  | { screen: 'ADD_FAV_PICK_CHANNEL'; categoryId: string }
   | { screen: 'REMOVE_FAV' }
   | { screen: 'REORDER_FAV'; sourceIndex?: number };
 

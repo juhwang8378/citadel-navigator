@@ -1,8 +1,11 @@
 import {
   ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
   type InteractionEditReplyOptions,
+  type MessageActionRowComponentBuilder,
 } from 'discord.js';
 import type { Category } from '../storage/configStore.js';
 
@@ -13,195 +16,193 @@ export type ChannelOption = {
 };
 
 export type RenderResult = InteractionEditReplyOptions & {
-  components: ActionRowBuilder<StringSelectMenuBuilder>[];
+  components: ActionRowBuilder<MessageActionRowComponentBuilder>[];
 };
-
-const BACK_VALUE = 'BACK';
 
 function buildSelect(
   customId: string,
   placeholder: string,
   options: StringSelectMenuOptionBuilder[],
-): ActionRowBuilder<StringSelectMenuBuilder> {
+): ActionRowBuilder<MessageActionRowComponentBuilder> {
   const menu = new StringSelectMenuBuilder()
     .setCustomId(customId)
     .setPlaceholder(placeholder)
     .addOptions(options);
-  return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu);
+  return new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(menu);
+}
+
+function buildNavRow(options: { showBack?: boolean; showHome?: boolean }): ActionRowBuilder<MessageActionRowComponentBuilder> | null {
+  const buttons: ButtonBuilder[] = [];
+  if (options.showBack) {
+    buttons.push(
+      new ButtonBuilder().setCustomId('navi:nav:back').setLabel('뒤로가기').setStyle(ButtonStyle.Secondary),
+    );
+  }
+  if (options.showHome) {
+    buttons.push(
+      new ButtonBuilder().setCustomId('navi:nav:home').setLabel('홈으로').setStyle(ButtonStyle.Secondary),
+    );
+  }
+  if (buttons.length === 0) return null;
+  return new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(buttons);
 }
 
 // Screen A: 홈
 export function renderHome(options: { favorites: string[]; hasBack: boolean }): RenderResult {
   const { favorites, hasBack } = options;
   const favoritesText = favorites.length > 0 ? favorites.map((f) => `• ${f}`).join('\n') : '즐겨찾기가 없습니다.';
-  const selectOptions: StringSelectMenuOptionBuilder[] = [
-    new StringSelectMenuOptionBuilder().setLabel('이동하기').setValue('GO'),
-    new StringSelectMenuOptionBuilder().setLabel('즐겨찾기 편집').setValue('EDIT'),
-  ];
-  if (hasBack) {
-    selectOptions.push(new StringSelectMenuOptionBuilder().setLabel('뒤로가기').setValue(BACK_VALUE));
-  }
+  const mainRow = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+    new ButtonBuilder().setCustomId('navi:home:go').setLabel('이동하기').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId('navi:home:edit').setLabel('즐겨찾기 편집').setStyle(ButtonStyle.Secondary),
+  );
+  const rows: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [mainRow];
+  const navRow = buildNavRow({ showBack: hasBack });
+  if (navRow) rows.push(navRow);
+
   return {
     content: `**채널 내비게이터**\n원하는 채널로 이동하거나 즐겨찾기를 관리하세요.\n\n즐겨찾기:\n${favoritesText}`,
-    components: [buildSelect('navi:home', '메뉴를 선택하세요', selectOptions)],
+    components: rows,
   };
 }
 
 // Screen B: 카테고리 선택
-export function renderPickCategory(categories: Category[]): RenderResult {
-  const options: StringSelectMenuOptionBuilder[] = categories.map((cat) =>
+export function renderPickCategory(options: { categories: Category[]; canGoBack: boolean }): RenderResult {
+  const selectOptions: StringSelectMenuOptionBuilder[] = options.categories.map((cat) =>
     new StringSelectMenuOptionBuilder().setLabel(cat.name).setValue(cat.id),
   );
-  options.push(new StringSelectMenuOptionBuilder().setLabel('뒤로가기').setValue(BACK_VALUE));
+  const rows: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [
+    buildSelect('navi:pickcat', '카테고리 선택', selectOptions),
+  ];
+  const navRow = buildNavRow({ showBack: options.canGoBack, showHome: true });
+  if (navRow) rows.push(navRow);
   return {
     content: '카테고리를 선택하세요.',
-    components: [buildSelect('navi:pickcat', '카테고리 선택', options)],
+    components: rows,
   };
 }
 
-// Screen C: 채널 목록 + 선택
+// Screen C: 채널 목록
 export function renderChannelList(options: {
   categoryName: string;
   categoryId: string;
   channels: ChannelOption[];
-  selectedChannelId?: string;
-  jumpUrl?: string;
+  canGoBack: boolean;
 }): RenderResult {
-  const channelOptions: StringSelectMenuOptionBuilder[] = options.channels.map((ch) =>
-    new StringSelectMenuOptionBuilder()
-      .setLabel(`#${ch.name} — ${ch.description}`)
-      .setValue(ch.id)
-      .setDescription('이 채널로 이동 링크 보기'),
-  );
-  channelOptions.push(new StringSelectMenuOptionBuilder().setLabel('뒤로가기').setValue(BACK_VALUE));
-
-  const rows: ActionRowBuilder<StringSelectMenuBuilder>[] = [
-    buildSelect(`navi:chanlist:${options.categoryId}`, '채널 선택', channelOptions),
-  ];
-
-  if (options.selectedChannelId) {
-    const actionOptions: StringSelectMenuOptionBuilder[] = [
-      new StringSelectMenuOptionBuilder().setLabel('즐겨찾기에 추가').setValue('FAV_ADD'),
-      new StringSelectMenuOptionBuilder().setLabel('뒤로가기').setValue(BACK_VALUE),
-      new StringSelectMenuOptionBuilder().setLabel('홈으로').setValue('HOME'),
-    ];
-    rows.push(buildSelect(`navi:chanactions:${options.categoryId}`, '다음 작업을 선택하세요', actionOptions));
-  }
-
-  const selectionText = options.selectedChannelId
-    ? `<#${options.selectedChannelId}> 로 이동: ${options.jumpUrl ?? ''}`.trim()
-    : '';
+  const listText =
+    options.channels.length > 0
+      ? options.channels.map((ch) => `• <#${ch.id}> — ${ch.description}`).join('\n')
+      : '이 카테고리에 표시할 채널이 없습니다.';
+  const navRow = buildNavRow({ showBack: options.canGoBack, showHome: true });
+  const rows: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [];
+  if (navRow) rows.push(navRow);
 
   return {
-    content: `카테고리: ${options.categoryName}\n채널을 선택하면 해당 채널로 이동할 수 있는 링크를 보여줍니다.\n${selectionText}`,
+    content: `카테고리: ${options.categoryName}\n아래 링크를 눌러서 해당 채널로 이동하세요.\n\n${listText}`,
     components: rows,
   };
 }
 
 // Screen D: 즐겨찾기 편집
-export function renderEditFavorites(options: { hasCurrentChannel: boolean; notice?: string }): RenderResult {
-  const { hasCurrentChannel, notice } = options;
+export function renderEditFavorites(options: {
+  hasCurrentChannel: boolean;
+  notice?: string;
+  canGoBack: boolean;
+}): RenderResult {
+  const { hasCurrentChannel, notice, canGoBack } = options;
   const opts: StringSelectMenuOptionBuilder[] = [
     new StringSelectMenuOptionBuilder()
       .setLabel('현재 채널을 즐겨찾기에 추가')
       .setValue('ADD_CURRENT')
       .setDescription(hasCurrentChannel ? '지금 보고 있는 채널을 추가' : '현재 채널이 없어 선택 불가')
-      .setDefault(false)
       .setEmoji({ name: '⭐' }),
-    new StringSelectMenuOptionBuilder().setLabel('카테고리에서 채널 선택해 추가').setValue('ADD_FROM_CATEGORY'),
     new StringSelectMenuOptionBuilder().setLabel('즐겨찾기에서 삭제').setValue('REMOVE'),
     new StringSelectMenuOptionBuilder().setLabel('즐겨찾기 순서 변경').setValue('REORDER'),
-    new StringSelectMenuOptionBuilder().setLabel('뒤로가기').setValue(BACK_VALUE),
-    new StringSelectMenuOptionBuilder().setLabel('홈으로').setValue('HOME'),
   ];
 
-  if (!hasCurrentChannel) {
-    opts[0].setDefault(true).setDescription('현재 채널이 없어요');
-  }
+  const rows: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [
+    buildSelect('navi:editfav', '메뉴를 선택하세요', opts),
+  ];
+  const navRow = buildNavRow({ showBack: canGoBack, showHome: true });
+  if (navRow) rows.push(navRow);
 
   return {
     content: `${notice ? `${notice}\n\n` : ''}즐겨찾기(최대 5개)를 추가/삭제/순서 변경할 수 있습니다.`,
-    components: [buildSelect('navi:editfav', '메뉴를 선택하세요', opts)],
+    components: rows,
   };
 }
 
-// Screen E: 즐겨찾기 추가 - 카테고리 선택
-export function renderAddFavPickCategory(categories: Category[]): RenderResult {
-  const opts: StringSelectMenuOptionBuilder[] = categories.map((cat) =>
-    new StringSelectMenuOptionBuilder().setLabel(cat.name).setValue(cat.id),
-  );
-  opts.push(new StringSelectMenuOptionBuilder().setLabel('뒤로가기').setValue(BACK_VALUE));
-  return {
-    content: '즐겨찾기에 추가할 채널의 카테고리를 선택하세요.',
-    components: [buildSelect('navi:addfavcat', '카테고리 선택', opts)],
-  };
-}
-
-// Screen F: 즐겨찾기 추가 - 채널 선택
-export function renderAddFavPickChannel(options: {
-  categoryName: string;
-  categoryId: string;
-  channels: ChannelOption[];
+// Screen E: 즐겨찾기 삭제
+export function renderRemoveFavorite(options: {
+  favorites: ChannelOption[];
+  canGoBack: boolean;
 }): RenderResult {
-  const opts: StringSelectMenuOptionBuilder[] = options.channels.map((ch) =>
-    new StringSelectMenuOptionBuilder().setLabel(`#${ch.name} — ${ch.description}`).setValue(ch.id),
-  );
-  opts.push(new StringSelectMenuOptionBuilder().setLabel('뒤로가기').setValue(BACK_VALUE));
-  return {
-    content: `카테고리 "${options.categoryName}"에서 즐겨찾기에 추가할 채널을 선택하세요.`,
-    components: [buildSelect(`navi:addfavchan:${options.categoryId}`, '채널 선택', opts)],
-  };
-}
-
-// Screen G: 즐겨찾기 삭제
-export function renderRemoveFavorite(favorites: ChannelOption[]): RenderResult {
-  const opts: StringSelectMenuOptionBuilder[] = favorites.map((fav) =>
+  const opts: StringSelectMenuOptionBuilder[] = options.favorites.map((fav) =>
     new StringSelectMenuOptionBuilder().setLabel(`#${fav.name}`).setValue(fav.id).setDescription(fav.description),
   );
-  opts.push(new StringSelectMenuOptionBuilder().setLabel('뒤로가기').setValue(BACK_VALUE));
+  const rows: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [
+    buildSelect('navi:removefav', '즐겨찾기 선택', opts),
+  ];
+  const navRow = buildNavRow({ showBack: options.canGoBack, showHome: true });
+  if (navRow) rows.push(navRow);
   return {
     content: '삭제할 즐겨찾기를 선택하세요.',
-    components: [buildSelect('navi:removefav', '즐겨찾기 선택', opts)],
+    components: rows,
   };
 }
 
-// Screen H: 즐겨찾기 순서 변경 (2단계)
+// Screen F: 즐겨찾기 순서 변경
 export function renderReorderFavorite(options: {
   favorites: ChannelOption[];
   sourceIndex?: number;
+  canGoBack: boolean;
 }): RenderResult {
-  const firstOptions: StringSelectMenuOptionBuilder[] = options.favorites.map((fav, idx) =>
-    new StringSelectMenuOptionBuilder()
-      .setLabel(`#${fav.name}`)
-      .setValue(String(idx))
-      .setDescription(fav.description),
-  );
-  firstOptions.push(new StringSelectMenuOptionBuilder().setLabel('뒤로가기').setValue(BACK_VALUE));
+  const rows: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [];
+  let content = '즐겨찾기 순서를 변경하세요.';
 
-  const rows: ActionRowBuilder<StringSelectMenuBuilder>[] = [
-    buildSelect('navi:reorder:pick', '이동할 즐겨찾기를 선택하세요', firstOptions),
-  ];
-
-  if (options.sourceIndex !== undefined) {
+  if (options.sourceIndex === undefined) {
+    const firstOptions: StringSelectMenuOptionBuilder[] = options.favorites.map((fav, idx) =>
+      new StringSelectMenuOptionBuilder()
+        .setLabel(`#${fav.name}`)
+        .setValue(String(idx))
+        .setDescription(fav.description),
+    );
+    rows.push(buildSelect('navi:reorder:pick', '이동할 즐겨찾기를 선택하세요', firstOptions));
+    content = '순서를 변경할 즐겨찾기를 선택하세요.';
+  } else {
+    const selected = options.favorites[options.sourceIndex];
     const moveOptions: StringSelectMenuOptionBuilder[] = options.favorites.map((fav, idx) =>
       new StringSelectMenuOptionBuilder()
         .setLabel(`${idx + 1}번 위치로 이동`)
         .setValue(String(idx))
         .setDescription(`#${fav.name}`),
     );
-    moveOptions.push(new StringSelectMenuOptionBuilder().setLabel('뒤로가기').setValue(BACK_VALUE));
     rows.push(buildSelect('navi:reorder:target', '이동할 위치 선택(1~마지막)', moveOptions));
+    const selectedText = selected ? `#${selected.name}` : '선택된 즐겨찾기';
+    content = `${selectedText}의 즐겨찾기 순서를 변경하세요.`;
   }
 
+  const navRow = buildNavRow({ showBack: options.canGoBack, showHome: true });
+  if (navRow) rows.push(navRow);
+
   return {
-    content: '즐겨찾기 순서를 변경하세요.',
+    content,
     components: rows,
   };
 }
 
-export function renderInfoMessage(text: string): RenderResult {
+export function renderInfoMessage(
+  text: string,
+  nav?: { showBack?: boolean; showHome?: boolean },
+): RenderResult {
+  const components: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [];
+  if (nav) {
+    const navRow = buildNavRow(nav);
+    if (navRow) {
+      components.push(navRow);
+    }
+  }
   return {
     content: text,
-    components: [],
+    components,
   };
 }
