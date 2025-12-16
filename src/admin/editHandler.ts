@@ -7,6 +7,10 @@ import {
   ChannelType,
   PermissionFlagsBits,
   StringSelectMenuInteraction,
+  TextChannel,
+  VoiceChannel,
+  ForumChannel,
+  CategoryChannel,
   TextInputBuilder,
   TextInputStyle,
   ModalBuilder,
@@ -24,7 +28,7 @@ import {
 import { getEditSession, setEditSession, startEditSession, endEditSession, type EditMode } from './editSession.js';
 import { nanoid } from 'nanoid';
 
-function ensureModerator(interaction: ButtonInteraction | StringSelectMenuInteraction | ChannelSelectMenuInteraction | ModalSubmitInteraction): boolean {
+function ensureModerator(interaction: ButtonInteraction | StringSelectMenuInteraction | ModalSubmitInteraction): boolean {
   const member = interaction.member;
   if (member && 'permissions' in member) {
     const perms = (member as any).permissions;
@@ -77,13 +81,18 @@ function renderHomeRow(): any[] {
   return [buildButtons([{ id: 'naviedit:home', label: '처음으로', style: ButtonStyle.Primary }])];
 }
 
+function sortByPosition(a: TextChannel | VoiceChannel | ForumChannel | CategoryChannel, b: TextChannel | VoiceChannel | ForumChannel | CategoryChannel) {
+  return (a.position ?? 0) - (b.position ?? 0);
+}
+
 async function listUnassignedChannels(interaction: ChatInputCommandInteraction | ButtonInteraction | StringSelectMenuInteraction) {
   if (!interaction.guild) return [];
   const config = await readConfig();
   const assigned = new Set(Object.keys(config.channelRegistry));
   const channels = interaction.guild.channels.cache
     .filter((ch) => ch.type !== ChannelType.GuildCategory && (ch as any).isTextBased?.())
-    .sort((a, b) => (a.rawPosition ?? 0) - (b.rawPosition ?? 0))
+    .filter((ch): ch is TextChannel | VoiceChannel | ForumChannel | CategoryChannel => !!ch && 'position' in ch)
+    .sort(sortByPosition)
     .filter((ch) => !assigned.has(ch.id))
     .map((ch) => ({ label: ch.name, value: ch.id }))
     .slice(0, 25);
@@ -96,8 +105,8 @@ async function listCategoryChannels(interaction: ChatInputCommandInteraction | B
   const channelIds = getChannelsByCategory(config, categoryId);
   const channels = channelIds
     .map((id) => interaction.guild!.channels.cache.get(id))
-    .filter((ch): ch is NonNullable<typeof ch> => !!ch)
-    .sort((a, b) => (a.rawPosition ?? 0) - (b.rawPosition ?? 0))
+    .filter((ch): ch is TextChannel | VoiceChannel | ForumChannel | CategoryChannel => !!ch && 'position' in ch)
+    .sort(sortByPosition)
     .map((ch, idx) => ({ label: `${idx + 1}. ${ch.name}`, value: ch.id }));
   return channels;
 }
@@ -108,8 +117,8 @@ async function listAssignedChannels(interaction: ChatInputCommandInteraction | B
   const assignedIds = Object.keys(config.channelRegistry);
   const channels = assignedIds
     .map((id) => interaction.guild!.channels.cache.get(id))
-    .filter((ch): ch is NonNullable<typeof ch> => !!ch)
-    .sort((a, b) => (a.rawPosition ?? 0) - (b.rawPosition ?? 0))
+    .filter((ch): ch is TextChannel | VoiceChannel | ForumChannel | CategoryChannel => !!ch && 'position' in ch)
+    .sort(sortByPosition)
     .map((ch) => ({ label: ch.name, value: ch.id }));
   return channels;
 }
@@ -615,7 +624,7 @@ async function handleNav(interaction: ButtonInteraction) {
   }
 }
 
-export async function handleEditInteraction(interaction: ButtonInteraction | StringSelectMenuInteraction | ChannelSelectMenuInteraction) {
+export async function handleEditInteraction(interaction: ButtonInteraction | StringSelectMenuInteraction) {
   if (!interaction.customId.startsWith('naviedit:')) return false;
   if (!ensureModerator(interaction)) {
     await interaction.reply({ content: '권한이 필요합니다.', ephemeral: true });

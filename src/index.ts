@@ -56,7 +56,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const handled = await handleEditModalInteraction(interaction);
       if (handled) return;
     }
-    if (interaction.isStringSelectMenu() || interaction.isChannelSelectMenu() || interaction.isButton()) {
+    if (interaction.isStringSelectMenu() || interaction.isButton()) {
       if (interaction.isButton()) {
         const handled = await handleAdminActionButton(interaction);
         if (handled) return;

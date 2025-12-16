@@ -1,6 +1,5 @@
 import type {
   ButtonInteraction,
-  ChannelSelectMenuInteraction,
   ChatInputCommandInteraction,
   ModalSubmitInteraction,
   StringSelectMenuInteraction,
@@ -11,7 +10,6 @@ import type {
 type AnyInteraction =
   | ChatInputCommandInteraction
   | StringSelectMenuInteraction
-  | ChannelSelectMenuInteraction
   | ButtonInteraction
   | ModalSubmitInteraction;
 
