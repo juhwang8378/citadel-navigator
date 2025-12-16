@@ -2,7 +2,6 @@ import {
   type ButtonInteraction,
   type ChatInputCommandInteraction,
   type StringSelectMenuInteraction,
-  type ChannelSelectMenuInteraction,
   type GuildBasedChannel,
   GuildMember,
   PermissionFlagsBits,
@@ -35,7 +34,6 @@ import { safeEditReply } from '../utils/debug.js';
 type NaviInteraction =
   | ChatInputCommandInteraction
   | StringSelectMenuInteraction
-  | ChannelSelectMenuInteraction
   | ButtonInteraction;
 
 function navButtons(userId: string): { showBack: boolean; showHome: boolean } {
@@ -145,6 +143,10 @@ async function openChannelList(
     await safeEditReply(interaction, renderInfoMessage('해당 카테고리를 찾을 수 없습니다.', navButtons(userId)), 'channel-list-missing');
     return;
   }
+  if (channels.length === 0) {
+    await safeEditReply(interaction, renderInfoMessage('이 카테고리에 표시할 채널이 없습니다.', navButtons(userId)), 'channel-list-empty');
+    return;
+  }
   const canGoBack = getOrCreateSession(userId).stack.length > 0;
   const result = renderChannelList({
     categoryName: category.name,
@@ -223,7 +225,7 @@ export async function handleNaviCommand(interaction: ChatInputCommandInteraction
 }
 
 export async function handleNaviInteraction(
-  interaction: StringSelectMenuInteraction | ChannelSelectMenuInteraction | ButtonInteraction,
+  interaction: StringSelectMenuInteraction | ButtonInteraction,
 ): Promise<void> {
   const customId = interaction.customId;
   if (!customId.startsWith('navi:')) return;
@@ -256,24 +258,20 @@ export async function handleNaviInteraction(
     return;
   }
 
-  if (interaction.isChannelSelectMenu()) {
-    if (customId.startsWith('navi:chanselect:')) {
+  if (interaction.isStringSelectMenu()) {
+    if (customId.startsWith('navi:chanlist:')) {
       const categoryId = customId.split(':')[2] ?? '';
       const channelId = interaction.values[0];
       setCurrentScreen(userId, { screen: 'CHANNEL_LIST', categoryId });
-      const { channels } = await fetchRegisteredChannels(interaction, categoryId);
-      const allowed = channels.find((c) => c.id === channelId);
-      if (!allowed) {
-        await safeEditReply(interaction, renderInfoMessage('선택한 채널을 사용할 수 없습니다.', navButtons(userId)), 'channel-select-invalid');
-        return;
-      }
       const link = interaction.guild ? `https://discord.com/channels/${interaction.guild.id}/${channelId}` : '';
-      await safeEditReply(interaction, renderInfoMessage(`선택한 채널로 이동: <#${channelId}> ${link}`.trim(), navButtons(userId)), 'channel-select');
+      await safeEditReply(
+        interaction,
+        renderInfoMessage(`선택한 채널로 이동: <#${channelId}> ${link}`.trim(), { showHome: true }),
+        'channel-select',
+      );
       return;
     }
-  }
 
-  if (interaction.isStringSelectMenu()) {
     if (customId === 'navi:pickcat') {
       const value = interaction.values[0];
       setCurrentScreen(userId, { screen: 'CHANNEL_LIST', categoryId: value });

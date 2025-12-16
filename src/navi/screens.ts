@@ -56,7 +56,7 @@ function buildNavRow(options: { showBack?: boolean; showHome?: boolean }): Actio
   }
   if (options.showHome) {
     buttons.push(
-      new ButtonBuilder().setCustomId('navi:nav:home').setLabel('홈으로').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('navi:nav:home').setLabel('홈으로').setStyle(ButtonStyle.Primary),
     );
   }
   if (buttons.length === 0) return null;
@@ -76,7 +76,7 @@ export function renderHome(options: { favorites: string[]; hasBack: boolean }): 
   if (navRow) rows.push(navRow);
 
   return {
-    content: `**채널 내비게이터**\n원하는 채널로 이동하거나 즐겨찾기를 관리하세요.\n\n즐겨찾기:\n${favoritesText}`,
+    content: `**채널 내비게이터**\n원하는 채널로 이동하거나 즐겨찾기를 관리하세요.\n\n즐겨찾기:\n${favoritesText}\n`,
     components: toContainers(rows),
   };
 }
@@ -105,18 +105,14 @@ export function renderChannelList(options: {
   canGoBack: boolean;
 }): RenderResult {
   const navRow = buildNavRow({ showBack: options.canGoBack, showHome: true });
+  const channelOpts = options.channels.map((ch) => new StringSelectMenuOptionBuilder().setLabel(ch.name).setValue(ch.id));
   const rows: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [
-    buildChannelSelect(`navi:chanselect:${options.categoryId}`, `${options.categoryName} 채널 선택`),
+    buildSelect(`navi:chanlist:${options.categoryId}`, `${options.categoryName} 채널 선택`, channelOpts),
   ];
   if (navRow) rows.push(navRow);
 
-  const summary =
-    options.channels.length > 0
-      ? options.channels.map((ch) => `• <#${ch.id}>`).join('\n')
-      : '이 카테고리에 표시할 채널이 없습니다.';
-
   return {
-    content: `카테고리: ${options.categoryName}\n아래에서 이동할 채널을 선택하세요.\n\n${summary}`,
+    content: `카테고리: ${options.categoryName}\n아래에서 이동할 채널을 선택하세요.`,
     components: toContainers(rows),
   };
 }

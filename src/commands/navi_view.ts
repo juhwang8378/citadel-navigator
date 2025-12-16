@@ -12,18 +12,17 @@ export const naviViewCommand: Command = {
     const config = await readConfig();
     const categories = [...config.categories].sort((a, b) => a.order - b.order);
     const lines: string[] = [];
-    for (const category of categories) {
-      lines.push(`**${category.name}**`);
+    categories.forEach((category, idx) => {
+      lines.push(`**${idx + 1}. ${category.name}**`);
       const channels = Object.entries(config.channelRegistry)
         .filter(([, entry]) => entry.categoryId === category.id)
         .map(([id]) => `<#${id}>`);
       lines.push(channels.length > 0 ? channels.map((c) => `• ${c}`).join('\n') : '• (채널 없음)');
-    }
+    });
     if (categories.length === 0) {
       lines.push('등록된 카테고리가 없습니다.');
     }
 
-    const row = buildButtons([{ id: 'noop:view', label: '읽기 전용', style: ButtonStyle.Secondary }]);
-    await interaction.reply(renderAdmin(lines.join('\n'), [row], VIEW_ACCENT));
+    await interaction.reply({ ...renderAdmin(lines.join('\n'), []), ephemeral: true });
   },
 };

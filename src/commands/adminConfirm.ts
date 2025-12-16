@@ -4,8 +4,6 @@ import { addCategory, readConfig, removeCategory, registerChannel, unregisterCha
 import { cancelPendingAction, consumePendingAction, getPendingAction } from '../utils/pendingActions.js';
 import { EDIT_ACCENT } from '../admin/ui.js';
 
-const COMPONENTS_FLAG = 1 << 15;
-
 function wrap(content: string) {
   return {
     content,

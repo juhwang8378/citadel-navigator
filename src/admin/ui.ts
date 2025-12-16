@@ -2,7 +2,6 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ChannelSelectMenuBuilder,
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
   type MessageActionRowComponentBuilder,
@@ -33,27 +32,13 @@ export function buildStringSelect(
   customId: string,
   placeholder: string,
   opts: { label: string; value: string }[],
+  maxValues = 1,
 ): ActionRowBuilder<MessageActionRowComponentBuilder> {
   const select = new StringSelectMenuBuilder()
     .setCustomId(customId)
     .setPlaceholder(placeholder)
+    .setMaxValues(maxValues)
     .addOptions(opts.map((o) => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value)));
-  return new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(select);
-}
-
-export function buildChannelSelect(
-  customId: string,
-  placeholder: string,
-  maxValues: number,
-  channelTypes?: number[],
-): ActionRowBuilder<MessageActionRowComponentBuilder> {
-  const select = new ChannelSelectMenuBuilder()
-    .setCustomId(customId)
-    .setPlaceholder(placeholder)
-    .setMaxValues(maxValues);
-  if (channelTypes) {
-    select.setChannelTypes(channelTypes as any);
-  }
   return new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(select);
 }
 
