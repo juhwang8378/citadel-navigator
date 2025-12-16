@@ -20,11 +20,11 @@ export type RenderResult = InteractionEditReplyOptions & {
 };
 
 const COMPONENTS_FLAG = 1 << 15;
-const NAVI_ACCENT = '#1be800';
+const NAVI_ACCENT = 0x1be800;
 
 function toContainers(
   rows: ActionRowBuilder<MessageActionRowComponentBuilder>[],
-  accentColor: string,
+  accentColor: number,
 ): any[] {
   return rows.map((row) => ({ ...row.toJSON(), accent_color: accentColor }));
 }

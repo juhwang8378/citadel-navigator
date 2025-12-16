@@ -8,8 +8,8 @@ import {
   type MessageActionRowComponentBuilder,
 } from 'discord.js';
 
-export const EDIT_ACCENT = '#ed0000';
-export const VIEW_ACCENT = '#0073ed';
+export const EDIT_ACCENT = 0xed0000;
+export const VIEW_ACCENT = 0x0073ed;
 
 const COMPONENTS_FLAG = 1 << 15;
 
