@@ -20,7 +20,7 @@ export type AdminRender = {
   ephemeral?: boolean;
 };
 
-function toContainers(rows: ActionRowBuilder<MessageActionRowComponentBuilder>[], accent: string): any[] {
+function toContainers(rows: ActionRowBuilder<MessageActionRowComponentBuilder>[], accent: number): any[] {
   return rows.map((row) => ({ ...row.toJSON(), accent_color: accent }));
 }
 
