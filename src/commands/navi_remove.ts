@@ -17,12 +17,17 @@ export const naviRemoveCommand: Command = {
         .setAutocomplete(true),
     ),
   async execute(interaction) {
-    if (!interaction.guild || !interaction.channel) {
+    if (!interaction.guild) {
       await interaction.reply({ content: '길드나 채널 정보를 찾을 수 없습니다.', ephemeral: true });
       return;
     }
+    const guildChannel = await interaction.guild.channels.fetch(interaction.channelId).catch(() => null);
+    if (!guildChannel) {
+      await interaction.reply({ content: '채널 정보를 불러올 수 없습니다.', ephemeral: true });
+      return;
+    }
     const config = await readConfig();
-    const registry = config.channelRegistry[interaction.channel.id];
+    const registry = config.channelRegistry[guildChannel.id];
     if (!registry) {
       await interaction.reply({ content: '이 채널은 내비게이션에 등록되어 있지 않습니다.', ephemeral: true });
       return;
@@ -42,15 +47,15 @@ export const naviRemoveCommand: Command = {
       userId: interaction.user.id,
       type: 'CHANNEL_REMOVE',
       payload: {
-        channelId: interaction.channel.id,
+        channelId: guildChannel.id,
         categoryId: targetCategory.id,
         categoryName: targetCategory.name,
-        channelName: interaction.channel.name,
+        channelName: guildChannel.name,
       },
     });
 
     await interaction.reply({
-      content: `관리자 권한으로 "${interaction.channel.name}" 채널을 "${targetCategory.name}" 카테고리에서 제거하시겠습니까? 이 변경사항은 서버 내 모든 유저에게 반영됩니다. 자주 변경하면 사용자에게 혼란을 줄 수 있습니다.`,
+      content: `관리자 권한으로 "${guildChannel.name}" 채널을 "${targetCategory.name}" 카테고리에서 제거하시겠습니까? 이 변경사항은 서버 내 모든 유저에게 반영됩니다. 자주 변경하면 사용자에게 혼란을 줄 수 있습니다.`,
       ephemeral: true,
       components: [
         {
