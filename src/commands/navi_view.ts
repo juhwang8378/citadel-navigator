@@ -1,4 +1,4 @@
-import { PermissionFlagsBits, SlashCommandBuilder, ButtonStyle } from 'discord.js';
+import { PermissionFlagsBits, SlashCommandBuilder, MessageFlags } from 'discord.js';
 import type { Command } from './types.js';
 import { readConfig } from '../storage/configStore.js';
 import { buildButtons, renderAdmin, VIEW_ACCENT } from '../admin/ui.js';
@@ -23,6 +23,6 @@ export const naviViewCommand: Command = {
       lines.push('등록된 카테고리가 없습니다.');
     }
 
-    await interaction.reply({ ...renderAdmin(lines.join('\n'), []), ephemeral: true });
+    await interaction.reply({ ...renderAdmin(lines.join('\n'), []), flags: MessageFlags.Ephemeral });
   },
 };

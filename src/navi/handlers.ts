@@ -4,6 +4,7 @@ import {
   type StringSelectMenuInteraction,
   type GuildBasedChannel,
   GuildMember,
+  MessageFlags,
   PermissionFlagsBits,
 } from 'discord.js';
 import { readConfig } from '../storage/configStore.js';
@@ -30,7 +31,7 @@ import {
   type ChannelOption,
 } from './screens.js';
 import type { Category } from '../storage/configStore.js';
-import { safeEditReply } from '../utils/debug.js';
+import { safeEditReply, safeFollowUp } from '../utils/debug.js';
 type NaviInteraction =
   | ChatInputCommandInteraction
   | StringSelectMenuInteraction
@@ -82,6 +83,7 @@ async function fetchRegisteredChannels(
       result.push({
         id: channel.id,
         name: channel.name,
+        categoryName: category.name,
       });
     } catch {
       // skip missing channels
@@ -96,6 +98,7 @@ async function resolveFavorites(
   favorites: string[],
 ): Promise<ChannelOption[]> {
   if (!interaction.guild) return [];
+  const config = await readConfig();
   const member = await ensureMember(interaction);
   const visible: ChannelOption[] = [];
   for (const id of favorites) {
@@ -105,6 +108,9 @@ async function resolveFavorites(
       visible.push({
         id: channel.id,
         name: channel.name,
+        categoryName: config.channelRegistry[id]
+          ? config.categories.find((c) => c.id === config.channelRegistry[id].categoryId)?.name
+          : undefined,
       });
     } catch {
       // ignore invalid
@@ -218,7 +224,7 @@ async function openReorderFavorite(
 }
 
 export async function handleNaviCommand(interaction: ChatInputCommandInteraction): Promise<void> {
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const userId = interaction.user.id;
   resetSession(userId);
   await showHome(interaction, userId);
@@ -262,12 +268,15 @@ export async function handleNaviInteraction(
     if (customId.startsWith('navi:chanlist:')) {
       const categoryId = customId.split(':')[2] ?? '';
       const channelId = interaction.values[0];
-      setCurrentScreen(userId, { screen: 'CHANNEL_LIST', categoryId });
+      setCurrentScreen(userId, { screen: 'CHANNEL_LIST', categoryId }, false);
       const link = interaction.guild ? `https://discord.com/channels/${interaction.guild.id}/${channelId}` : '';
-      await safeEditReply(
+      await safeFollowUp(
         interaction,
-        renderInfoMessage(`선택한 채널로 이동: <#${channelId}> ${link}`.trim(), { showHome: true }),
-        'channel-select',
+        {
+          content: `선택한 채널로 이동: <#${channelId}> ${link}`.trim(),
+          flags: MessageFlags.Ephemeral,
+        },
+        'channel-direct',
       );
       return;
     }

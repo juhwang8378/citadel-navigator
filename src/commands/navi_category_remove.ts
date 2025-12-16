@@ -1,4 +1,4 @@
-import { PermissionFlagsBits, SlashCommandBuilder, type AutocompleteInteraction } from 'discord.js';
+import { PermissionFlagsBits, SlashCommandBuilder, type AutocompleteInteraction, MessageFlags } from 'discord.js';
 import type { Command } from './types.js';
 import { readConfig } from '../storage/configStore.js';
 import { createPendingAction } from '../utils/pendingActions.js';
@@ -21,7 +21,7 @@ export const naviCategoryRemoveCommand: Command = {
     const config = await readConfig();
     const target = findCategoryByInput(config, categoryId);
     if (!target) {
-      await interaction.reply({ content: '해당 카테고리가 없습니다.', ephemeral: true });
+      await interaction.reply({ content: '해당 카테고리가 없습니다.', flags: MessageFlags.Ephemeral });
       return;
     }
     const token = createPendingAction({
@@ -31,7 +31,7 @@ export const naviCategoryRemoveCommand: Command = {
     });
     await interaction.reply({
       content: `관리자 권한으로 "${target.name}" 카테고리를 내비게이션에서 제거하시겠습니까? 이 변경사항은 서버 내 모든 유저에게 반영됩니다. 자주 변경하면 사용자에게 혼란을 줄 수 있습니다.`,
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
       components: [
         {
           type: 1,

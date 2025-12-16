@@ -7,6 +7,7 @@ import {
   ChannelType,
   PermissionFlagsBits,
   StringSelectMenuInteraction,
+  MessageFlags,
   TextChannel,
   VoiceChannel,
   ForumChannel,
@@ -200,28 +201,28 @@ function renderDeleteConfirm(grouped: Record<string, string[]>) {
 
 function renderOrderPickCategory(categories: { id: string; name: string }[]) {
   const options = categories.map((c) => ({ label: c.name, value: c.id }));
-  const rows = [buildStringSelect('naviedit:order:category', '카테고리 선택', options), ...renderNavRow()];
+  const rows = [buildStringSelect('naviedit:order:category', '카테고리 선택', options), ...renderHomeRow()];
   return renderAdmin('순서를 변경할 채널의 카테고리를 정해주세요', rows, EDIT_ACCENT);
 }
 
 function renderOrderPickChannel(categoryName: string, options: { label: string; value: string }[]) {
-  const rows = [buildStringSelect('naviedit:order:channel', `${categoryName} 채널 선택`, options)];
+  const rows = [buildStringSelect('naviedit:order:channel', `${categoryName} 채널 선택`, options), ...renderHomeRow()];
   return renderAdmin('순서를 변경할 채널을 선택하세요', rows, EDIT_ACCENT);
 }
 
 function renderOrderPickPosition(categoryName: string, options: { label: string; value: string }[]) {
-  const rows = [buildStringSelect('naviedit:order:position', '새 위치 선택', options)];
+  const rows = [buildStringSelect('naviedit:order:position', '새 위치 선택', options), ...renderHomeRow()];
   return renderAdmin(`${categoryName} 카테고리 안에서 선택한 채널의 새로운 자리를 정해주세요`, rows, EDIT_ACCENT);
 }
 
 function renderCategoryOrderPick(categories: { id: string; name: string }[]) {
   const options = categories.map((c, idx) => ({ label: `${idx + 1}. ${c.name}`, value: c.id }));
-  const rows = [buildStringSelect('naviedit:catorder:category', '카테고리 선택', options)];
+  const rows = [buildStringSelect('naviedit:catorder:category', '카테고리 선택', options), ...renderHomeRow()];
   return renderAdmin('순서를 변경할 카테고리를 정해주세요', rows, EDIT_ACCENT);
 }
 
 function renderCategoryOrderPosition(categoryName: string, options: { label: string; value: string }[]) {
-  const rows = [buildStringSelect('naviedit:catorder:position', '새 위치 선택', options)];
+  const rows = [buildStringSelect('naviedit:catorder:position', '새 위치 선택', options), ...renderHomeRow()];
   return renderAdmin(`${categoryName} 카테고리의 새로운 자리를 정해주세요`, rows, EDIT_ACCENT);
 }
 
@@ -241,13 +242,13 @@ export async function handleEditCommand(
   switch (mode) {
     case 'ADD_CHANNEL':
       if (!interaction.guild) {
-        await respond({ content: '길드에서만 사용할 수 있습니다.', ephemeral: true });
+        await respond({ content: '길드에서만 사용할 수 있습니다.', flags: MessageFlags.Ephemeral });
         break;
       }
       {
         const available = await listUnassignedChannels(interaction);
         if (available.length === 0) {
-          await respond({ ...renderAdmin('추가할 채널이 없습니다.', renderHomeRow()), ephemeral: true });
+          await respond({ ...renderAdmin('추가할 채널이 없습니다.', renderHomeRow()), flags: MessageFlags.Ephemeral });
           break;
         }
         await respond({
@@ -255,7 +256,7 @@ export async function handleEditCommand(
             available,
             selectedCount: 0,
           }),
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
       break;
@@ -264,12 +265,12 @@ export async function handleEditCommand(
       {
         const available = await listAssignedChannels(interaction);
         if (available.length === 0) {
-          await respond({ ...renderAdmin('삭제할 채널이 없습니다.', renderHomeRow()), ephemeral: true });
+          await respond({ ...renderAdmin('삭제할 채널이 없습니다.', renderHomeRow()), flags: MessageFlags.Ephemeral });
           break;
         }
         await respond({
           ...renderDeleteStart({ available, selectedCount: 0 }),
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
       break;
@@ -277,14 +278,14 @@ export async function handleEditCommand(
       session.current = { step: 'ORDER_PICK_CATEGORY' };
       const config = await readConfig();
       const categories = [...config.categories].sort((a, b) => a.order - b.order);
-      await respond({ ...renderOrderPickCategory(categories), ephemeral: true });
+      await respond({ ...renderOrderPickCategory(categories), flags: MessageFlags.Ephemeral });
       break;
     }
     case 'ORDER_CATEGORY': {
       session.current = { step: 'CATEGORY_ORDER_PICK' };
       const config = await readConfig();
       const categories = [...config.categories].sort((a, b) => a.order - b.order);
-      await respond({ ...renderCategoryOrderPick(categories), ephemeral: true });
+      await respond({ ...renderCategoryOrderPick(categories), flags: MessageFlags.Ephemeral });
       break;
     }
   }
@@ -354,7 +355,7 @@ async function handleAddExistingCategory(interaction: StringSelectMenuInteractio
   const config = await readConfig();
   const category = config.categories.find((c) => c.id === categoryId);
   if (!category) {
-    await interaction.reply({ content: '카테고리를 찾을 수 없습니다.', ephemeral: true });
+    await interaction.reply({ content: '카테고리를 찾을 수 없습니다.', flags: MessageFlags.Ephemeral });
     return;
   }
   const overrides: string[] = [];
@@ -412,7 +413,7 @@ async function handleAddConfirm(interaction: ButtonInteraction, isSubmit: boolea
   }
   await applyChannelAdd(session.current);
   await removeEmptyCategories();
-  endEditSession(interaction.user.id);
+  setEditSession(interaction.user.id, { step: 'PICK_ADD_CHANNELS', channels: [] });
   await interaction.editReply(renderAdmin('채널이 추가되었습니다.', renderHomeRow(), EDIT_ACCENT));
 }
 
@@ -430,7 +431,14 @@ async function handleNewCategoryModal(interaction: ModalSubmitInteraction) {
   }));
   const { channels } = session.current;
   setEditSession(interaction.user.id, { step: 'ADD_NEW_CATEGORY_ORDER', channels, categoryName: name });
-  await interaction.reply({ ...renderAdmin('사용자에게 보여질 새 카테고리 순서를 정해주세요', [buildStringSelect('naviedit:add:new:order', '순서 선택', options), ...renderNavRow()], EDIT_ACCENT), ephemeral: true });
+  await interaction.reply({
+    ...renderAdmin(
+      '사용자에게 보여질 새 카테고리 순서를 정해주세요',
+      [buildStringSelect('naviedit:add:new:order', '순서 선택', options), ...renderNavRow()],
+      EDIT_ACCENT,
+    ),
+    flags: MessageFlags.Ephemeral,
+  });
 }
 
 async function handleNewCategoryOrder(interaction: StringSelectMenuInteraction) {
@@ -472,7 +480,7 @@ async function handleAddNewConfirm(interaction: ButtonInteraction, isSubmit: boo
   await insertCategoryAt(newCategory, session.current.position);
   await applyChannelAdd({ channels: session.current.channels, categoryId: id });
   await removeEmptyCategories();
-  endEditSession(interaction.user.id);
+  setEditSession(interaction.user.id, { step: 'PICK_ADD_CHANNELS', channels: [] });
   await interaction.editReply(renderAdmin('새 카테고리가 생성되고 채널이 추가되었습니다.', renderHomeRow(), EDIT_ACCENT));
 }
 
@@ -520,7 +528,7 @@ async function handleDeleteSubmit(interaction: ButtonInteraction) {
     await unregisterChannel(ch);
   }
   await removeEmptyCategories();
-  endEditSession(interaction.user.id);
+  setEditSession(interaction.user.id, { step: 'DELETE_PICK_CHANNELS', channels: [] });
   await interaction.editReply(renderAdmin('채널이 카테고리에서 삭제되었습니다.', renderHomeRow(), EDIT_ACCENT));
 }
 
@@ -544,7 +552,7 @@ async function handleOrderCategory(interaction: StringSelectMenuInteraction) {
   const config = await readConfig();
   const category = config.categories.find((c) => c.id === categoryId);
   if (!category) {
-    await interaction.reply({ content: '카테고리를 찾을 수 없습니다.', ephemeral: true });
+    await interaction.reply({ content: '카테고리를 찾을 수 없습니다.', flags: MessageFlags.Ephemeral });
     return;
   }
   setEditSession(interaction.user.id, { step: 'ORDER_PICK_CHANNEL', categoryId });
@@ -561,7 +569,7 @@ async function handleOrderChannelSelect(interaction: StringSelectMenuInteraction
   const { categoryId } = session.current;
   const channels = getChannelsByCategory(config, categoryId);
   if (!channels.includes(channelId)) {
-    await interaction.reply({ content: '선택한 채널은 해당 카테고리에 없습니다.', ephemeral: true });
+    await interaction.reply({ content: '선택한 채널은 해당 카테고리에 없습니다.', flags: MessageFlags.Ephemeral });
     return;
   }
   const options = channels
@@ -579,7 +587,7 @@ async function handleOrderPosition(interaction: StringSelectMenuInteraction) {
   const targetIndex = parseInt(interaction.values[0], 10);
   const { categoryId, channelId } = session.current;
   await reorderChannels(categoryId, channelId, targetIndex);
-  endEditSession(interaction.user.id);
+  setEditSession(interaction.user.id, { step: 'ORDER_PICK_CATEGORY' });
   await interaction.update(renderAdmin('채널 순서가 변경되었습니다.', renderHomeRow(), EDIT_ACCENT));
 }
 
@@ -605,13 +613,16 @@ async function handleCatOrderPosition(interaction: StringSelectMenuInteraction) 
   if (session.current.step !== 'CATEGORY_ORDER_POSITION') return;
   const targetIndex = parseInt(interaction.values[0], 10);
   await reorderCategory(session.current.categoryId, targetIndex);
-  endEditSession(interaction.user.id);
+  setEditSession(interaction.user.id, { step: 'CATEGORY_ORDER_PICK' });
   await interaction.update(renderAdmin('카테고리 순서가 변경되었습니다.', renderHomeRow(), EDIT_ACCENT));
 }
 
 async function handleNav(interaction: ButtonInteraction) {
   const session = getEditSession(interaction.user.id);
-  if (!session) return;
+  if (!session) {
+    await interaction.reply({ content: '세션이 만료되었습니다. /navi_edit 명령을 다시 실행하세요.', flags: MessageFlags.Ephemeral });
+    return;
+  }
   if (interaction.customId === 'naviedit:home') {
     endEditSession(interaction.user.id);
     await handleEditCommand(interaction, session.mode);
@@ -627,7 +638,7 @@ async function handleNav(interaction: ButtonInteraction) {
 export async function handleEditInteraction(interaction: ButtonInteraction | StringSelectMenuInteraction) {
   if (!interaction.customId.startsWith('naviedit:')) return false;
   if (!ensureModerator(interaction)) {
-    await interaction.reply({ content: '권한이 필요합니다.', ephemeral: true });
+    await interaction.reply({ content: '권한이 필요합니다.', flags: MessageFlags.Ephemeral });
     return true;
   }
 
@@ -664,10 +675,6 @@ export async function handleEditInteraction(interaction: ButtonInteraction | Str
       await handleNav(interaction);
       return true;
     }
-  }
-
-  if (interaction.isChannelSelectMenu()) {
-    // no channel select menus used
   }
 
   if (interaction.isStringSelectMenu()) {

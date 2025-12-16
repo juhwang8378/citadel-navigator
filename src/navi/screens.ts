@@ -2,7 +2,6 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ChannelSelectMenuBuilder,
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
   type InteractionEditReplyOptions,
@@ -13,6 +12,7 @@ import type { Category } from '../storage/configStore.js';
 export type ChannelOption = {
   id: string;
   name: string;
+  categoryName?: string;
 };
 
 export type RenderResult = InteractionEditReplyOptions & {
@@ -32,18 +32,6 @@ function buildSelect(
     .setCustomId(customId)
     .setPlaceholder(placeholder)
     .addOptions(options);
-  return new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(menu);
-}
-
-function buildChannelSelect(
-  customId: string,
-  placeholder: string,
-  maxValues = 1,
-): ActionRowBuilder<MessageActionRowComponentBuilder> {
-  const menu = new ChannelSelectMenuBuilder()
-    .setCustomId(customId)
-    .setPlaceholder(placeholder)
-    .setMaxValues(maxValues);
   return new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(menu);
 }
 
@@ -76,7 +64,7 @@ export function renderHome(options: { favorites: string[]; hasBack: boolean }): 
   if (navRow) rows.push(navRow);
 
   return {
-    content: `**채널 내비게이터**\n원하는 채널로 이동하거나 즐겨찾기를 관리하세요.\n\n즐겨찾기:\n${favoritesText}\n`,
+    content: `**채널 내비게이터**\n원하는 채널로 이동하거나 즐겨찾기를 관리하세요.\n\n즐겨찾기:\n${favoritesText}\n\n`,
     components: toContainers(rows),
   };
 }
@@ -176,15 +164,21 @@ export function renderReorderFavorite(options: {
 
   if (options.sourceIndex === undefined) {
     const firstOptions: StringSelectMenuOptionBuilder[] = options.favorites.map((fav, idx) =>
-      new StringSelectMenuOptionBuilder().setLabel(`#${fav.name}`).setValue(String(idx)),
+      new StringSelectMenuOptionBuilder()
+        .setLabel(`#${fav.name}${fav.categoryName ? ` (${fav.categoryName})` : ''}`)
+        .setValue(String(idx)),
     );
     rows.push(buildSelect('navi:reorder:pick', '이동할 즐겨찾기를 선택하세요', firstOptions));
     content = '순서를 변경할 즐겨찾기를 선택하세요.';
   } else {
     const selected = options.favorites[options.sourceIndex];
-    const moveOptions: StringSelectMenuOptionBuilder[] = options.favorites.map((fav, idx) =>
-      new StringSelectMenuOptionBuilder().setLabel(`${idx + 1}번 위치로 이동`).setValue(String(idx)),
-    );
+    const moveOptions: StringSelectMenuOptionBuilder[] = options.favorites
+      .map((fav, idx) =>
+        new StringSelectMenuOptionBuilder()
+          .setLabel(`${idx + 1}. ${fav.name}${fav.categoryName ? ` (${fav.categoryName})` : ''}`)
+          .setValue(String(idx)),
+      )
+      .filter((_, idx) => idx !== options.sourceIndex);
     rows.push(buildSelect('navi:reorder:target', '이동할 위치 선택(1~마지막)', moveOptions));
     const selectedText = selected ? `#${selected.name}` : '선택된 즐겨찾기';
     content = `${selectedText}의 즐겨찾기 순서를 변경하세요.`;

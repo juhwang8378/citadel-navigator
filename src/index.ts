@@ -1,4 +1,4 @@
-import { Client, Events, GatewayIntentBits, REST, Routes } from 'discord.js';
+import { Client, Events, GatewayIntentBits, REST, Routes, MessageFlags } from 'discord.js';
 import dotenv from 'dotenv';
 import { commands } from './commands/index.js';
 import type { Command } from './commands/types.js';
@@ -77,7 +77,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (interaction.replied || interaction.deferred) {
         await interaction.editReply(errorPayload as any).catch(() => {});
       } else {
-        await interaction.reply({ ...(errorPayload as any), ephemeral: true }).catch(() => {});
+        await interaction.reply({ ...(errorPayload as any), flags: MessageFlags.Ephemeral }).catch(() => {});
       }
     }
   }
