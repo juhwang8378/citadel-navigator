@@ -82,7 +82,11 @@ export function renderHome(options: { favorites: string[]; hasBack: boolean }): 
   if (navRow) rows.push(navRow);
 
   return {
-    content: `**채널 내비게이터**\n원하는 채널로 이동하거나 즐겨찾기를 관리하세요.\n\n즐겨찾기:\n${favoritesText}`,
+    embeds: [
+      {
+        description: `**채널 내비게이터**\n원하는 채널로 이동하거나 즐겨찾기를 관리하세요.\n\n즐겨찾기:\n${favoritesText}`,
+      },
+    ],
     components: toContainers(rows, NAVI_ACCENT),
     flags: COMPONENTS_FLAG,
   };
@@ -99,7 +103,7 @@ export function renderPickCategory(options: { categories: Category[]; canGoBack:
   const navRow = buildNavRow({ showBack: options.canGoBack, showHome: true });
   if (navRow) rows.push(navRow);
   return {
-    content: '카테고리를 선택하세요.',
+    embeds: [{ description: '카테고리를 선택하세요.' }],
     components: toContainers(rows, NAVI_ACCENT),
     flags: COMPONENTS_FLAG,
   };
@@ -124,7 +128,7 @@ export function renderChannelList(options: {
       : '이 카테고리에 표시할 채널이 없습니다.';
 
   return {
-    content: `카테고리: ${options.categoryName}\n아래에서 이동할 채널을 선택하세요.\n\n${summary}`,
+    embeds: [{ description: `카테고리: ${options.categoryName}\n아래에서 이동할 채널을 선택하세요.\n\n${summary}` }],
     components: toContainers(rows, NAVI_ACCENT),
     flags: COMPONENTS_FLAG,
   };
@@ -154,7 +158,11 @@ export function renderEditFavorites(options: {
   if (navRow) rows.push(navRow);
 
   return {
-    content: `${notice ? `${notice}\n\n` : ''}즐겨찾기(최대 5개)를 추가/삭제/순서 변경할 수 있습니다.`,
+    embeds: [
+      {
+        description: `${notice ? `${notice}\n\n` : ''}즐겨찾기(최대 5개)를 추가/삭제/순서 변경할 수 있습니다.`,
+      },
+    ],
     components: toContainers(rows, NAVI_ACCENT),
     flags: COMPONENTS_FLAG,
   };
@@ -174,7 +182,7 @@ export function renderRemoveFavorite(options: {
   const navRow = buildNavRow({ showBack: options.canGoBack, showHome: true });
   if (navRow) rows.push(navRow);
   return {
-    content: '삭제할 즐겨찾기를 선택하세요.',
+    embeds: [{ description: '삭제할 즐겨찾기를 선택하세요.' }],
     components: toContainers(rows, NAVI_ACCENT),
     flags: COMPONENTS_FLAG,
   };
@@ -209,7 +217,7 @@ export function renderReorderFavorite(options: {
   if (navRow) rows.push(navRow);
 
   return {
-    content,
+    embeds: [{ description: content }],
     components: toContainers(rows, NAVI_ACCENT),
     flags: COMPONENTS_FLAG,
   };
@@ -234,7 +242,7 @@ export function renderInfoMessage(
     );
   }
   return {
-    content: text,
+    embeds: [{ description: text }],
     components: toContainers(rows, NAVI_ACCENT),
     flags: COMPONENTS_FLAG,
   };

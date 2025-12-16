@@ -14,7 +14,7 @@ export const VIEW_ACCENT = 0x0073ed;
 const COMPONENTS_FLAG = 1 << 15;
 
 export type AdminRender = {
-  content: string;
+  embeds: { description: string }[];
   components: any[];
   flags?: number;
   ephemeral?: boolean;
@@ -61,5 +61,5 @@ export function buildChannelSelect(
 }
 
 export function renderAdmin(content: string, rows: ActionRowBuilder<MessageActionRowComponentBuilder>[], accent = EDIT_ACCENT): AdminRender {
-  return { content, components: toContainers(rows, accent), flags: COMPONENTS_FLAG };
+  return { embeds: [{ description: content }], components: toContainers(rows, accent), flags: COMPONENTS_FLAG };
 }

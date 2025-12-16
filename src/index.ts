@@ -68,7 +68,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
   } catch (error) {
     console.error(error);
     const errorPayload = {
-      content: '오류가 발생했습니다. 잠시 후 다시 시도하세요.',
+      embeds: [{ description: '오류가 발생했습니다. 잠시 후 다시 시도하세요.' }],
       components: [
         { type: 1, accent_color: 0xed0000, components: [{ type: 2, style: 2, label: '확인', custom_id: 'noop', disabled: true }] },
       ],
