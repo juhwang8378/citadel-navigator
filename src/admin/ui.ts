@@ -34,10 +34,12 @@ export function buildStringSelect(
   opts: { label: string; value: string }[],
   maxValues = 1,
 ): ActionRowBuilder<MessageActionRowComponentBuilder> {
+  const safeMax = Math.max(1, Math.min(maxValues, opts.length || 1));
   const select = new StringSelectMenuBuilder()
     .setCustomId(customId)
     .setPlaceholder(placeholder)
-    .setMaxValues(maxValues)
+    .setMinValues(1)
+    .setMaxValues(safeMax)
     .addOptions(opts.map((o) => new StringSelectMenuOptionBuilder().setLabel(o.label).setValue(o.value)));
   return new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(select);
 }

@@ -64,7 +64,7 @@ export function renderHome(options: { favorites: string[]; hasBack: boolean }): 
   if (navRow) rows.push(navRow);
 
   return {
-    content: `**채널 내비게이터**\n원하는 채널로 이동하거나 즐겨찾기를 관리하세요.\n\n즐겨찾기:\n${favoritesText}\n\n`,
+    content: `**채널 내비게이터**\n원하는 채널로 이동하거나 즐겨찾기를 관리하세요.\n\n즐겨찾기:\n${favoritesText}\n\n\n`,
     components: toContainers(rows),
   };
 }

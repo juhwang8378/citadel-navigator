@@ -269,11 +269,10 @@ export async function handleNaviInteraction(
       const categoryId = customId.split(':')[2] ?? '';
       const channelId = interaction.values[0];
       setCurrentScreen(userId, { screen: 'CHANNEL_LIST', categoryId }, false);
-      const link = interaction.guild ? `https://discord.com/channels/${interaction.guild.id}/${channelId}` : '';
       await safeFollowUp(
         interaction,
         {
-          content: `선택한 채널로 이동: <#${channelId}> ${link}`.trim(),
+          content: `<#${channelId}>`,
           flags: MessageFlags.Ephemeral,
         },
         'channel-direct',
